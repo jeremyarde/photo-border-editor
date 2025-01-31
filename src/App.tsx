@@ -99,93 +99,86 @@ interface Border {
 // Add fill mode type
 type FillMode = "inside" | "outside";
 
-interface WavyBorderProps {
-  borders: Border[];
-  filled: boolean;
-  fillColor: string;
-  fillMode: FillMode;
-}
-
-function drawWavyPath(ctx: CanvasRenderingContext2D, params: Border) {
-  const offset = params.waveSize + params.borderWidth + params.padding;
-  const width = CANVAS_SIZE - offset * 2;
-  const height = CANVAS_SIZE - offset * 2;
-
-  // Set styles
-  ctx.lineWidth = params.borderWidth;
-  ctx.strokeStyle = params.color;
-
-  // Start a new path for this border
-  ctx.beginPath();
-
-  // If filling outside, start with the outer rectangle
-  if (params.isFilled && params.fillMode === "outside") {
-    ctx.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  }
-
-  if (params.isWavy) {
-    // Draw wavy border path
-    ctx.moveTo(offset, offset + params.waveSize * Math.sin(params.phase));
-
-    // Draw all four sides
-    const sides = [
-      [0, width, "x", "y"],
-      [0, height, "y", "x"],
-      [width, 0, "x", "y"],
-      [height, 0, "y", "x"],
-    ];
-
-    sides.forEach(([start, end, mainDim, otherDim], i) => {
-      const step = start < end ? WAVE_STEP : -WAVE_STEP;
-      for (
-        let pos = start;
-        start < end ? pos <= end : pos >= end;
-        pos += step
-      ) {
-        const t = pos / (mainDim === "x" ? width : height);
-        const wave =
-          params.waveSize *
-          Math.sin(t * params.frequency * Math.PI + params.phase);
-
-        const x =
-          mainDim === "x"
-            ? pos + offset
-            : i === 1
-            ? CANVAS_SIZE - offset + wave
-            : offset + wave;
-        const y =
-          mainDim === "y"
-            ? pos + offset
-            : i === 2
-            ? CANVAS_SIZE - offset + wave
-            : offset + wave;
-
-        ctx.lineTo(x, y);
-      }
-    });
-  } else {
-    ctx.rect(offset, offset, width, height);
-  }
-
-  ctx.closePath();
-
-  // Handle fill
-  if (params.isFilled) {
-    ctx.fillStyle = params.fillColor;
-    ctx.fill(params.fillMode === "outside" ? "evenodd" : "nonzero");
-  }
-
-  // Draw the border
-  ctx.stroke();
-}
-
 function drawWavyBorder(
   ctx: CanvasRenderingContext2D,
   props: { borders: Border[] }
 ) {
   const { borders } = props;
+
+  function drawWavyPath(params: Border) {
+    const offset = params.waveSize + params.borderWidth + params.padding;
+    const width = CANVAS_SIZE - offset * 2;
+    const height = CANVAS_SIZE - offset * 2;
+
+    if (params.isWavy) {
+      ctx.moveTo(offset, offset + params.waveSize * Math.sin(params.phase));
+
+      // Draw all four sides
+      const sides = [
+        [0, width, "x", "y"],
+        [0, height, "y", "x"],
+        [width, 0, "x", "y"],
+        [height, 0, "y", "x"],
+      ];
+
+      sides.forEach(([start, end, mainDim], i) => {
+        const step = start < end ? WAVE_STEP : -WAVE_STEP;
+        for (
+          let pos: number = start as number;
+          start < end ? pos <= (end as number) : pos >= (end as number);
+          pos += step
+        ) {
+          const t = pos / (mainDim === "x" ? width : height);
+          const wave =
+            params.waveSize *
+            Math.sin(t * params.frequency * Math.PI + params.phase);
+
+          const x =
+            mainDim === "x"
+              ? pos + offset
+              : i === 1
+              ? CANVAS_SIZE - offset + wave
+              : offset + wave;
+          const y =
+            mainDim === "y"
+              ? pos + offset
+              : i === 2
+              ? CANVAS_SIZE - offset + wave
+              : offset + wave;
+
+          ctx.lineTo(x, y);
+        }
+      });
+    } else {
+      ctx.rect(offset, offset, width, height);
+    }
+  }
+
+  // Draw each border
   borders.forEach((border) => {
-    drawWavyPath(ctx, border);
+    ctx.beginPath();
+
+    // For outside fill, draw the outer rectangle first
+    if (border.isFilled && border.fillMode === "outside") {
+      ctx.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    }
+
+    // Draw the border path
+    drawWavyPath(border);
+    ctx.closePath();
+
+    // Set styles for this border
+    ctx.lineWidth = border.borderWidth;
+    ctx.strokeStyle = border.color;
+
+    // Handle fill if needed
+    if (border.isFilled) {
+      ctx.fillStyle = border.fillColor;
+      ctx.fill(border.fillMode === "outside" ? "evenodd" : "nonzero");
+    }
+
+    // Draw the border
+    ctx.stroke();
   });
 }
 
